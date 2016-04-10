@@ -1,4 +1,4 @@
-AWS SDK SQS Grails Plugin
+Grails AWS SDK SQS Plugin
 =========================
 
 [![Build Status](https://travis-ci.org/agorapulse/grails-aws-sdk-sqs.svg?token=BpxbA1UyYnNoUwrDNXtN&branch=master)](https://travis-ci.org/agorapulse/grails-aws-sdk-sqs)
