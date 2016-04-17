@@ -24,9 +24,9 @@ class AmazonSQSServiceSpec extends Specification {
         String queueUrl = service.createQueue('someQueue')
 
         then:
-        1 * service.client.createQueue(_) >> ['queueUrl': 'new.queue.url']
+        1 * service.client.createQueue(_) >> ['queueUrl': 'somepath/queueName']
         queueUrl
-        queueUrl == 'new.queue.url'
+        queueUrl == 'somepath/queueName'
     }
 
     /*
@@ -34,11 +34,30 @@ class AmazonSQSServiceSpec extends Specification {
      */
 
     def "Delete message"() {
+        given:
+        service.queueUrlByNames['queueName'] = 'somepath/queueName'
+
         when:
-        service.deleteMessage('queueUrl', 'receiptHandle')
+        service.deleteMessage('queueName', 'receiptHandle')
 
         then:
         1 * service.client.deleteMessage(_)
+    }
+
+    /*
+     * Tests for listQueueNames()
+     */
+
+    def "List queue names"() {
+        when:
+        List queueNames = service.listQueueNames()
+
+        then:
+        1 * service.client.listQueues(_) >> ['queueUrls': ['somepath/queueName1', 'somepath/queueName2', 'somepath/queueName3']]
+        queueNames
+        queueNames.size() == 3
+        queueNames == ['queueName1', 'queueName2', 'queueName3']
+
     }
 
     /*
@@ -50,9 +69,10 @@ class AmazonSQSServiceSpec extends Specification {
         List queueUrls = service.listQueueUrls()
 
         then:
-        1 * service.client.listQueues(_) >> ['queueUrls': ['queueUrl1', 'queueUrl2', 'queueUrl3']]
+        1 * service.client.listQueues(_) >> ['queueUrls': ['somepath/queueName1', 'somepath/queueName2', 'somepath/queueName3']]
         queueUrls
         queueUrls.size() == 3
+        queueUrls == ['somepath/queueName1', 'somepath/queueName2', 'somepath/queueName3']
     }
 
     /*
@@ -60,8 +80,11 @@ class AmazonSQSServiceSpec extends Specification {
      */
 
     def "Get queue attributes"() {
+        given:
+        service.queueUrlByNames['queueName'] = 'somepath/queueName'
+
         when:
-        Map attributes = service.getQueueAttributes('queueUrl')
+        Map attributes = service.getQueueAttributes('queueName')
 
         then:
         1 * service.client.getQueueAttributes(_) >> {
@@ -75,10 +98,10 @@ class AmazonSQSServiceSpec extends Specification {
 
     def "Get queue attributes service exception"() {
         given:
-        service.queueUrls << 'queueUrl'
+        service.queueUrlByNames['queueName'] = 'somepath/queueName'
 
         when:
-        Map attributes = service.getQueueAttributes('queueUrl')
+        Map attributes = service.getQueueAttributes('queueName')
 
         then:
         1 * service.client.getQueueAttributes(_) >> {
@@ -87,13 +110,16 @@ class AmazonSQSServiceSpec extends Specification {
             throw exception
         }
         !attributes
-        old(service.queueUrls.size() == 1)
-        service.queueUrls.size() == 0
+        old(service.queueUrlByNames.size() == 1)
+        service.queueUrlByNames.size() == 0
     }
 
     def "Get queue attributes client exception"() {
+        given:
+        service.queueUrlByNames['queueName'] = 'somepath/queueName'
+
         when:
-        Map attributes = service.getQueueAttributes('queueUrl')
+        Map attributes = service.getQueueAttributes('queueName')
 
         then:
         1 * service.client.getQueueAttributes(_) >> { throw new AmazonClientException('Error') }
@@ -101,21 +127,21 @@ class AmazonSQSServiceSpec extends Specification {
     }
 
     /*
-     * Tests for getQueueUrl(String jobName, String groupName)
+     * Tests for getQueueUrl()
      */
 
-    def "Get queue url"() {
+    def "Get queue url with autocreate"() {
         when:
-        String queueUrl = service.getQueueUrl('jobName_groupName')
+        String queueUrl = service.getQueueUrl('queueName', true)
 
         then:
-        service.client.listQueues(_) >> ['queueUrls': ['queueUrl1', 'queueUrl2', 'queueUrl3']]
-        service.client.createQueue(_) >> ['queueUrl': 'flo_groupName_jobName']
+        service.client.listQueues(_) >> ['queueUrls': ['somepath/queueName1', 'somepath/queueName2', 'somepath/queueName3']]
+        service.client.createQueue(_) >> ['queueUrl': 'somepath/queueName']
         service.client
-        queueUrl == 'flo_groupName_jobName'
-        old(service.queueUrls.size() == 0)
-        service.queueUrls.size() == 4
-        service.queueUrls.contains('flo_groupName_jobName')
+        queueUrl == 'somepath/queueName'
+        old(service.queueUrlByNames.size() == 0)
+        service.queueUrlByNames.size() == 4
+        service.queueUrlByNames['queueName'] == 'somepath/queueName'
     }
 
     /*
@@ -123,8 +149,11 @@ class AmazonSQSServiceSpec extends Specification {
      */
 
     def "Receive messages"() {
+        given:
+        service.queueUrlByNames['queueName'] = 'somepath/queueName'
+
         when:
-        List messages = service.receiveMessages('queueUrl', 1, 1, 1)
+        List messages = service.receiveMessages('queueName', 1, 1, 1)
 
         then:
         1 * service.client.receiveMessage(_) >> ['messages': ['message1', 'message2']]
@@ -137,8 +166,11 @@ class AmazonSQSServiceSpec extends Specification {
      */
 
     def "Send messages"() {
+        given:
+        service.queueUrlByNames['queueName'] = 'somepath/queueName'
+
         when:
-        String messageId = service.sendMessage('queueUrl', 'messageBody')
+        String messageId = service.sendMessage('queueName', 'messageBody')
 
         then:
         1 * service.client.sendMessage(_) >> ['messageId': 'msg_id']

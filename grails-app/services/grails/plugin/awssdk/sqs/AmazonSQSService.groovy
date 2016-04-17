@@ -15,11 +15,13 @@ import org.springframework.beans.factory.InitializingBean
 class AmazonSQSService implements InitializingBean  {
 
     static SERVICE_NAME = ServiceAbbreviations.SQS
-
     GrailsApplication grailsApplication
     AmazonSQSClient client
 
-    private List queueUrls = []
+    private Map queueUrlByNames = [:]
+    static private String getQueueNameFromUrl(String queueUrl) {
+        queueUrl.tokenize('/').last()
+    }
 
     void afterPropertiesSet() throws Exception {
         // Set region
@@ -54,6 +56,7 @@ class AmazonSQSService implements InitializingBean  {
         }
         String queueUrl = client.createQueue(createQueueRequest).queueUrl
         log.debug "Queue created (queueUrl=$queueUrl)"
+        addQueue(queueUrl)
         queueUrl
     }
 
@@ -62,36 +65,43 @@ class AmazonSQSService implements InitializingBean  {
      * @param queueUrl
      * @param receiptHandle
      */
-    void deleteMessage(String queueUrl, String receiptHandle) {
+    void deleteMessage(String queueName,
+                       String receiptHandle) {
+        String queueUrl = getQueueUrl(queueName)
+        assert queueUrl, "Queue ${queueName} not found"
+
         client.deleteMessage(new DeleteMessageRequest(queueUrl, receiptHandle))
         log.debug "Message deleted (queueUrl=$queueUrl)"
     }
 
     /**
      *
-     * @return
+     * @param queueName
      */
-    List listQueueUrls() {
-        if (!queueUrls) {
-            loadQueueUrls()
-        }
-        // Return a clone to avoid java.util.ConcurrentModificationException
-        queueUrls?.clone()
+    void deleteQueue(String queueName) {
+        String queueUrl = getQueueUrl(queueName)
+        assert queueUrl, "Queue ${queueName} not found"
+
+        client.deleteQueue(queueUrl)
+        removeQueue(queueUrl)
     }
 
     /**
      *
-     * @param queueUrl
+     * @param queueName
      * @return
      */
-    Map getQueueAttributes(String queueUrl) {
+    Map getQueueAttributes(String queueName) {
+        String queueUrl = getQueueUrl(queueName)
+        assert queueUrl, "Queue ${queueName} not found"
+
         GetQueueAttributesRequest getQueueAttributesRequest = new GetQueueAttributesRequest(queueUrl).withAttributeNames(['All'])
         Map attributes = [:]
         try {
             attributes = client.getQueueAttributes(getQueueAttributesRequest).attributes
         } catch(AmazonServiceException exception) {
             if (exception.errorCode == 'AWS.SimpleQueueService.NonExistentQueue') {
-                removeQueueUrl(queueUrl)
+                removeQueue(queueUrl)
             }
             log.warn(exception)
         } catch (AmazonClientException exception) {
@@ -108,40 +118,70 @@ class AmazonSQSService implements InitializingBean  {
      * @return
      */
     String getQueueUrl(String queueName,
-                       boolean autoCreate = true) {
+                       boolean autoCreate = false) {
         if (serviceConfig?.queueNamePrefix) {
             queueName = serviceConfig.queueNamePrefix + queueName
         }
-        if (!queueUrls) {
-            loadQueueUrls()
+        if (!queueUrlByNames) {
+            loadQueues()
         }
 
-        String queueUrl = queueUrls.find { String queueUrl -> if (queueUrl.find("/$queueName")) return queueUrl }
+        String queueUrl = queueUrlByNames[queueName]
         if (!queueUrl && autoCreate) {
             queueUrl = createQueue(queueName)
-            if (queueUrl) {
-                addQueueUrl(queueUrl)
-            }
         }
         queueUrl
     }
 
     /**
      *
-     * @param queueUrl
+     * @param reload
+     * @return
+     */
+    List<String> listQueueNames(boolean reload = false) {
+        if (!queueUrlByNames || reload) {
+            loadQueues()
+        }
+        queueUrlByNames?.keySet().sort()
+    }
+
+    /**
+     *
+     * @param reload
+     * @return
+     */
+    List<String> listQueueUrls(boolean reload = false) {
+        if (!queueUrlByNames || reload) {
+            loadQueues()
+        }
+        queueUrlByNames?.values().sort()
+    }
+
+    /**
+     *
+     * @param queueName
      * @param maxNumberOfMessages
      * @param visibilityTimeout
      * @param waitTimeSeconds
      * @return
      */
-    List receiveMessages(String queueUrl,
-                         int maxNumberOfMessages = 0,
+    List receiveMessages(String queueName,
+                         int maxNumberOfMessages = 1,
                          int visibilityTimeout = 0,
                          int waitTimeSeconds = 0) {
+        String queueUrl = getQueueUrl(queueName)
+        assert queueUrl, "Queue ${queueName} not found"
+
         ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queueUrl)
-        if (maxNumberOfMessages) receiveMessageRequest.maxNumberOfMessages = maxNumberOfMessages
-        if (visibilityTimeout) receiveMessageRequest.visibilityTimeout = visibilityTimeout
-        if (waitTimeSeconds) receiveMessageRequest.waitTimeSeconds = waitTimeSeconds
+        if (maxNumberOfMessages) {
+            receiveMessageRequest.maxNumberOfMessages = maxNumberOfMessages
+        }
+        if (visibilityTimeout) {
+            receiveMessageRequest.visibilityTimeout = visibilityTimeout
+        }
+        if (waitTimeSeconds) {
+            receiveMessageRequest.waitTimeSeconds = waitTimeSeconds
+        }
         List messages = client.receiveMessage(receiveMessageRequest).messages
         log.debug "Messages received (count=${messages.size()})"
         messages
@@ -153,8 +193,11 @@ class AmazonSQSService implements InitializingBean  {
      * @param messageBody
      * @return
      */
-    String sendMessage(String queueUrl,
+    String sendMessage(String queueName,
                        String messageBody) {
+        String queueUrl = getQueueUrl(queueName)
+        assert queueUrl, "Queue ${queueName} not found"
+
         String messageId = client.sendMessage(new SendMessageRequest(queueUrl, messageBody)).messageId
         log.debug "Message sent (messageId=$messageId)"
         messageId
@@ -171,22 +214,28 @@ class AmazonSQSService implements InitializingBean  {
     }
 
     @Synchronized
-    private List addQueueUrl(String queueUrl) {
-        queueUrls << queueUrl
+    private void addQueue(String queueUrl) {
+        assert queueUrl, "Invalid queueUrl"
+        queueUrlByNames[getQueueNameFromUrl(queueUrl)] = queueUrl
     }
 
     @Synchronized
-    private List loadQueueUrls() {
+    private void loadQueues() {
         ListQueuesRequest listQueuesRequest = new ListQueuesRequest()
         if (serviceConfig?.queueNamePrefix) {
             listQueuesRequest.queueNamePrefix = serviceConfig.queueNamePrefix
         }
-        queueUrls = client.listQueues(listQueuesRequest).queueUrls
+        List queueUrls = client.listQueues(listQueuesRequest).queueUrls
+        queueUrlByNames = queueUrls?.collectEntries { queueUrl ->
+            [getQueueNameFromUrl(queueUrl), queueUrl]
+        }
+
     }
 
     @Synchronized
-    private List removeQueueUrl(String queueUrl) {
-        queueUrls = queueUrls.findAll { it != queueUrl }
+    private void removeQueue(String queueUrl) {
+        assert queueUrl, "Invalid queueUrl"
+        queueUrlByNames.remove(getQueueNameFromUrl(queueUrl))
     }
 
 }
