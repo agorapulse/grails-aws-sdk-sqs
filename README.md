@@ -27,7 +27,7 @@ Add plugin dependency to your `build.gradle`:
 ```groovy
 dependencies {
   ...
-  compile 'org.grails.plugins:aws-sdk-sqs:2.0.0-beta1'
+  compile 'org.grails.plugins:aws-sdk-sqs:2.0.0-beta2'
   ...
 ```
 
@@ -88,11 +88,16 @@ grails:
                 secretKey: {SECRET_KEY} # Service setting (optional)
                 region: eu-west-1       # Service setting (optional)
                 queueNamePrefix: ben_   # Service setting (optional)
+                delaySeconds: 262144    # Service setting (optional)
+                maximumMessageSize: 262144 # Service setting (optional)
+                messageRetentionPeriod: 345600 # Service setting (optional), default to 4 days
+                visibilityTimeout: 30   # Service setting (optional), default to 30 seconds when receiving messages
             
 ```
 
 **queueNamePrefix** allows you to automatically prefix all your queue names (for example, to get different env or scopes for each developer running their app locally).
 
+**delaySeconds**, **maximumMessageSize**, **messageRetentionPeriod** and **visibilityTimeout** are default settings used when creating a queue.
 
 # Usage
 
@@ -106,21 +111,37 @@ Usage examples:
 // Create queue
 amazonSQSService.createQueue(queueName)
 
+// List queue names
+amazonSQSService.listQueueNames()
+
 // List queue URLs
 amazonSQSService.listQueueUrls()
 
-// Delete message
-amazonSQSService.deleteMessage(queueUrl, messageId)
-
 // Get queue attribute
-amazonSQSService.getQueueAttributes(queueUrl)
-
-// Receive messages
-amazonSQSService.receiveMessages(queueUrl, maxNumberOfMessages, visibilityTimeout, waitTimeSeconds)
+Map attributes = amazonSQSService.getQueueAttributes(queueName)
+println "ApproximateNumberOfMessages=${attributes['ApproximateNumberOfMessages']}"
 
 // Send message
-amazonSQSService.sendMessage(queueUrl, messageBody)
+amazonSQSService.sendMessage(queueName, messageBody)
+
+// Receive and delete messages
+messages = amazonSQSService.receiveMessages(queueName, maxNumberOfMessages, visibilityTimeout, waitTimeSeconds)
+messages.each { message ->
+    String body = message.body
+    // Put your business logic here and then delete the message if successfully handled
+    amazonSQSService.deleteMessage(queueName, message.receiptHandle)    
+}
+
+// Delete queue
+amazonSQSService.deleteQueue(queueName)
 ```
+
+You will probably use `receiveMessages` in a [Quartz](https://github.com/grails-plugins/grails-quartz) job running periodically.
+
+Some interesting settings when receiving messages:
+* `maxNumberOfMessages`, how many messages do you cant to get at once (up to 10 messages, default is 1)
+* `visibilityTimeout`, how long the messages will stay not visible before going back to the queue (default depending on queue setting, usually 30s)
+* `waitTimeSeconds`, how long do you want to wait to get a message (up to 20 seconds, default depending on queue setting, usually 0s) 
 
 If required, you can also directly use **AmazonSQSClient** instance available at **amazonSQSService.client**.
 
