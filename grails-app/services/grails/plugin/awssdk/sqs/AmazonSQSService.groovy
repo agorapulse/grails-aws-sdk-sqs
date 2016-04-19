@@ -17,6 +17,7 @@ class AmazonSQSService implements InitializingBean  {
     static SERVICE_NAME = ServiceAbbreviations.SQS
     GrailsApplication grailsApplication
     AmazonSQSClient client
+    private String defaultQueueName = ''
 
     private Map queueUrlByNames = [:]
     static private String getQueueNameFromUrl(String queueUrl) {
@@ -33,6 +34,12 @@ class AmazonSQSService implements InitializingBean  {
         ClientConfiguration configuration = AwsClientUtil.buildClientConfiguration(config, serviceConfig)
         client = new AmazonSQSClient(credentials, configuration)
                 .withRegion(region)
+
+        defaultQueueName = serviceConfig?.queue ?: ''
+    }
+
+    protected void init(String queueName) {
+        defaultQueueName = queueName
     }
 
     /**
@@ -76,6 +83,16 @@ class AmazonSQSService implements InitializingBean  {
 
     /**
      *
+     * @param receiptHandle
+     */
+
+    void deleteMessage(String receiptHandle) {
+        assertDefaultQueueName()
+        deleteMessage(defaultQueueName, receiptHandle)
+    }
+
+    /**
+     *
      * @param queueName
      */
     void deleteQueue(String queueName) {
@@ -112,6 +129,15 @@ class AmazonSQSService implements InitializingBean  {
 
     /**
      *
+     * @return
+     */
+    Map getQueueAttributes() {
+        assertDefaultQueueName()
+        getQueueAttributes(defaultQueueName)
+    }
+
+    /**
+     *
      * @param jobName
      * @param groupName
      * @param autoCreate
@@ -131,6 +157,16 @@ class AmazonSQSService implements InitializingBean  {
             queueUrl = createQueue(queueName)
         }
         queueUrl
+    }
+
+    /**
+     *
+     * @param autoCreate
+     * @return
+     */
+    String getQueueUrl(boolean autoCreate = false) {
+        assertDefaultQueueName()
+        getQueueUrl(defaultQueueName)
     }
 
     /**
@@ -189,6 +225,20 @@ class AmazonSQSService implements InitializingBean  {
 
     /**
      *
+     * @param maxNumberOfMessages
+     * @param visibilityTimeout
+     * @param waitTimeSeconds
+     * @return
+     */
+    List receiveMessages(int maxNumberOfMessages = 1,
+                         int visibilityTimeout = 0,
+                         int waitTimeSeconds = 0) {
+        assertDefaultQueueName()
+        receiveMessages(maxNumberOfMessages, visibilityTimeout, waitTimeSeconds)
+    }
+
+    /**
+     *
      * @param queueUrl
      * @param messageBody
      * @return
@@ -203,7 +253,21 @@ class AmazonSQSService implements InitializingBean  {
         messageId
     }
 
+    /**
+     *
+     * @param messageBody
+     * @return
+     */
+    String sendMessage(String messageBody) {
+        assertDefaultQueueName()
+        sendMessage(defaultQueueName, messageBody)
+    }
+
     // PRIVATE
+
+    boolean assertDefaultQueueName() {
+        assert defaultQueueName, "Default queue must be defined"
+    }
 
     def getConfig() {
         grailsApplication.config.grails?.plugin?.awssdk ?: grailsApplication.config.grails?.plugins?.awssdk

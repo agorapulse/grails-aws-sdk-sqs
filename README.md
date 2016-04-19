@@ -1,7 +1,7 @@
 Grails AWS SDK SQS Plugin
 =========================
 
-[![Build Status](https://travis-ci.org/agorapulse/grails-aws-sdk-sqs.svg?token=BpxbA1UyYnNoUwrDNXtN&branch=master)](https://travis-ci.org/agorapulse/grails-aws-sdk-sqs)
+[![Build Status](https://travis-ci.org/agorapulse/grails-aws-sdk-sqs.svg?branch=master)](https://travis-ci.org/agorapulse/grails-aws-sdk-sqs)
 
 # Introduction
 
@@ -84,20 +84,39 @@ grails:
             secretKey: {SECRET_KEY} # Global default setting
             region: us-east-1       # Global default setting
             sqs:
-                accessKey: {ACCESS_KEY} # Service setting (optional)
-                secretKey: {SECRET_KEY} # Service setting (optional)
-                region: eu-west-1       # Service setting (optional)
-                queueNamePrefix: ben_   # Service setting (optional)
-                delaySeconds: 262144    # Service setting (optional)
-                maximumMessageSize: 262144 # Service setting (optional)
-                messageRetentionPeriod: 345600 # Service setting (optional), default to 4 days
-                visibilityTimeout: 30   # Service setting (optional), default to 30 seconds when receiving messages
+                accessKey: {ACCESS_KEY} # (optional)
+                secretKey: {SECRET_KEY} # (optional)
+                region: eu-west-1       # (optional)
+                queue: my-queue         # (optional)
+                queueNamePrefix: ben_   # (optional)
+                delaySeconds: 262144    # (optional)
+                maximumMessageSize: 262144 # (optional)
+                messageRetentionPeriod: 345600 # (optional), default to 4 days
+                visibilityTimeout: 30   # (optional), default to 30 seconds when receiving messages
             
 ```
 
-**queueNamePrefix** allows you to automatically prefix all your queue names (for example, to get different env or scopes for each developer running their app locally).
+**queue**: default queue to use when calling methods without `queueName`.
 
-**delaySeconds**, **maximumMessageSize**, **messageRetentionPeriod** and **visibilityTimeout** are default settings used when creating a queue.
+**queueNamePrefix**: automatically prefix all your queue names (for example, to get different env or scopes for each developer running their app locally).
+
+**delaySeconds**, **maximumMessageSize**, **messageRetentionPeriod** and **visibilityTimeout**: default settings used when creating a queue.
+
+TIP: if you use multiple queues, you can create a new service for each queue that inherits from **AmazonSQSService**.
+
+```groovy
+class MyQueueService extends AmazonSQSService {
+
+    static final QUEUE_NAME = 'my-queue'
+
+    @PostConstruct
+    def init() {
+        init(QUEUE_NAME)
+    }
+
+}
+```
+
 
 # Usage
 
@@ -105,7 +124,7 @@ The plugin provides the following Grails artefact:
 
 * **AmazonSQSService**
 
-Usage examples:
+## Queue management
 
 ```groovy
 // Create queue
@@ -121,19 +140,28 @@ amazonSQSService.listQueueUrls()
 Map attributes = amazonSQSService.getQueueAttributes(queueName)
 println "ApproximateNumberOfMessages=${attributes['ApproximateNumberOfMessages']}"
 
+// Delete queue
+amazonSQSService.deleteQueue(queueName)
+```
+
+## Message management
+
+```groovy
 // Send message
 amazonSQSService.sendMessage(queueName, messageBody)
+// Or if you have define default queue
+amazonSQSService.sendMessage(messageBody)
 
 // Receive and delete messages
 messages = amazonSQSService.receiveMessages(queueName, maxNumberOfMessages, visibilityTimeout, waitTimeSeconds)
+// Or if you have define default queue
+messages = amazonSQSService.receiveMessages(maxNumberOfMessages, visibilityTimeout, waitTimeSeconds)
+
 messages.each { message ->
     String body = message.body
     // Put your business logic here and then delete the message if successfully handled
     amazonSQSService.deleteMessage(queueName, message.receiptHandle)    
 }
-
-// Delete queue
-amazonSQSService.deleteQueue(queueName)
 ```
 
 You will probably use `receiveMessages` in a [Quartz](https://github.com/grails-plugins/grails-quartz) job running periodically.
@@ -142,6 +170,8 @@ Some interesting settings when receiving messages:
 * `maxNumberOfMessages`, how many messages do you cant to get at once (up to 10 messages, default is 1)
 * `visibilityTimeout`, how long the messages will stay not visible before going back to the queue (default depending on queue setting, usually 30s)
 * `waitTimeSeconds`, how long do you want to wait to get a message (up to 20 seconds, default depending on queue setting, usually 0s) 
+
+## Advanced usage
 
 If required, you can also directly use **AmazonSQSClient** instance available at **amazonSQSService.client**.
 
