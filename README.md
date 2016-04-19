@@ -27,7 +27,7 @@ Add plugin dependency to your `build.gradle`:
 ```groovy
 dependencies {
   ...
-  compile 'org.grails.plugins:aws-sdk-sqs:2.0.0-beta2'
+  compile 'org.grails.plugins:aws-sdk-sqs:2.0.0-beta3'
   ...
 ```
 
