@@ -10,10 +10,10 @@ import com.amazonaws.services.sqs.model.*
 import grails.core.GrailsApplication
 import grails.plugin.awssdk.AwsClientUtil
 import groovy.transform.Synchronized
-import groovy.util.logging.Log4j
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.InitializingBean
 
-@Log4j
+@Slf4j
 class AmazonSQSService implements InitializingBean  {
 
     static SERVICE_NAME = ServiceAbbreviations.SQS
