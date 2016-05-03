@@ -2,6 +2,7 @@ Grails AWS SDK SQS Plugin
 =========================
 
 [![Build Status](https://travis-ci.org/agorapulse/grails-aws-sdk-sqs.svg?branch=master)](https://travis-ci.org/agorapulse/grails-aws-sdk-sqs)
+[![Download](https://api.bintray.com/packages/agorapulse/plugins/aws-sdk-sqs/images/download.svg)](https://bintray.com/agorapulse/plugins/aws-sdk-sqs/_latestVersion)
 
 The [AWS SDK Plugins for Grails3](https://medium.com/@benorama/aws-sdk-plugins-for-grails-3-cc7f910fdc0d#.5gdwdxei3) are a suite of plugins that adds support for the [Amazon Web Services](http://aws.amazon.com/) infrastructure services.
 
@@ -35,7 +36,7 @@ repositories {
 
 dependencies {
   ...
-  compile 'org.grails.plugins:aws-sdk-sqs:2.0.0-beta7'
+  compile 'org.grails.plugins:aws-sdk-sqs:2.0.0-beta8'
   ...
 ```
 
