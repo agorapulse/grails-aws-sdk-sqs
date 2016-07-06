@@ -36,7 +36,7 @@ repositories {
 
 dependencies {
   ...
-  compile 'org.grails.plugins:aws-sdk-sqs:2.0.0-beta8'
+  compile 'org.grails.plugins:aws-sdk-sqs:2.0.0-beta9'
   ...
 ```
 
