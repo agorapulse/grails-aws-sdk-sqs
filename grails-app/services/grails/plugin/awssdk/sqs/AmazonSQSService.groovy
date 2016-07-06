@@ -240,17 +240,22 @@ class AmazonSQSService implements InitializingBean  {
     }
 
     /**
-     *
-     * @param queueUrl
+     * 
+     * @param queueName
      * @param messageBody
+     * @param delaySeconds
      * @return
      */
     String sendMessage(String queueName,
-                       String messageBody) {
+                       String messageBody,
+                       Integer delaySeconds = 0) {
         String queueUrl = getQueueUrl(queueName)
         assert queueUrl, "Queue ${queueName} not found"
-
-        String messageId = client.sendMessage(new SendMessageRequest(queueUrl, messageBody)).messageId
+        SendMessageRequest request = new SendMessageRequest(queueUrl, messageBody)
+        if (delaySeconds) {
+            request.delaySeconds = delaySeconds
+        }
+        String messageId = client.sendMessage(request).messageId
         log.debug "Message sent (messageId=$messageId)"
         messageId
     }
