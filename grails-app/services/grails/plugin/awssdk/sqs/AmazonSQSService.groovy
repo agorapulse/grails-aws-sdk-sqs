@@ -4,7 +4,7 @@ import com.amazonaws.AmazonClientException
 import com.amazonaws.AmazonServiceException
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.regions.Region
-import com.amazonaws.regions.ServiceAbbreviations
+import com.amazonaws.services.sqs.AmazonSQS
 import com.amazonaws.services.sqs.AmazonSQSClient
 import com.amazonaws.services.sqs.model.*
 import grails.core.GrailsApplication
@@ -16,7 +16,7 @@ import org.springframework.beans.factory.InitializingBean
 @Log4j
 class AmazonSQSService implements InitializingBean  {
 
-    static SERVICE_NAME = ServiceAbbreviations.SQS
+    static SERVICE_NAME = AmazonSQS.ENDPOINT_PREFIX
     GrailsApplication grailsApplication
     AmazonSQSClient client
     private String defaultQueueName = ''
