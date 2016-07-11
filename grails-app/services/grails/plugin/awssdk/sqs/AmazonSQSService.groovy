@@ -17,6 +17,7 @@ import org.springframework.beans.factory.InitializingBean
 class AmazonSQSService implements InitializingBean  {
 
     static SERVICE_NAME = AmazonSQS.ENDPOINT_PREFIX
+    
     GrailsApplication grailsApplication
     AmazonSQSClient client
     private String defaultQueueName = ''
