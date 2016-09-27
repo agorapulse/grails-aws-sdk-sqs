@@ -29,15 +29,9 @@ SQS makes it simple and cost-effective to decouple the components of a cloud app
 Add plugin dependency to your `build.gradle`:
 
 ```groovy
-repositories {
-    ...
-    maven { url "http://dl.bintray.com/agorapulse/plugins" } // TEMP, to remove once the plugin is officially released
-    ...
-}
-
 dependencies {
   ...
-  compile 'org.grails.plugins:aws-sdk-sqs:2.0.0-beta9'
+  compile 'org.grails.plugins:aws-sdk-sqs:2.0.0'
   ...
 ```
 
