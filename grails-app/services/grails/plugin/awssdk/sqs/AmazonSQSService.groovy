@@ -78,8 +78,6 @@ class AmazonSQSService implements InitializingBean  {
     void deleteMessage(String queueName,
                        String receiptHandle) {
         String queueUrl = getQueueUrl(queueName)
-        assert queueUrl, "Queue ${queueName} not found"
-
         client.deleteMessage(new DeleteMessageRequest(queueUrl, receiptHandle))
         log.debug "Message deleted (queueUrl=$queueUrl)"
     }
@@ -100,8 +98,6 @@ class AmazonSQSService implements InitializingBean  {
      */
     void deleteQueue(String queueName) {
         String queueUrl = getQueueUrl(queueName)
-        assert queueUrl, "Queue ${queueName} not found"
-
         client.deleteQueue(queueUrl)
         removeQueue(queueUrl)
     }
@@ -113,7 +109,6 @@ class AmazonSQSService implements InitializingBean  {
      */
     Map getQueueAttributes(String queueName) {
         String queueUrl = getQueueUrl(queueName)
-        assert queueUrl, "Queue ${queueName} not found"
 
         GetQueueAttributesRequest getQueueAttributesRequest = new GetQueueAttributesRequest(queueUrl).withAttributeNames(['All'])
         Map attributes = [:]
@@ -158,6 +153,8 @@ class AmazonSQSService implements InitializingBean  {
         String queueUrl = queueUrlByNames[queueName]
         if (!queueUrl && autoCreate) {
             queueUrl = createQueue(queueName)
+        } else {
+            throw new AmazonSQSException("Queue ${queueName} not found")
         }
         queueUrl
     }
@@ -209,7 +206,6 @@ class AmazonSQSService implements InitializingBean  {
                          int visibilityTimeout = 0,
                          int waitTimeSeconds = 0) {
         String queueUrl = getQueueUrl(queueName)
-        assert queueUrl, "Queue ${queueName} not found"
 
         ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queueUrl)
         if (maxNumberOfMessages) {
@@ -251,7 +247,7 @@ class AmazonSQSService implements InitializingBean  {
                        String messageBody,
                        Integer delaySeconds = 0) {
         String queueUrl = getQueueUrl(queueName)
-        assert queueUrl, "Queue ${queueName} not found"
+
         SendMessageRequest request = new SendMessageRequest(queueUrl, messageBody)
         if (delaySeconds) {
             request.delaySeconds = delaySeconds
