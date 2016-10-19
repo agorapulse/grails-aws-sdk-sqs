@@ -153,7 +153,8 @@ class AmazonSQSService implements InitializingBean  {
         String queueUrl = queueUrlByNames[queueName]
         if (!queueUrl && autoCreate) {
             queueUrl = createQueue(queueName)
-        } else {
+        }
+        if (!queueUrl) {
             throw new AmazonSQSException("Queue ${queueName} not found")
         }
         queueUrl
