@@ -118,9 +118,9 @@ class AmazonSQSService implements InitializingBean  {
             if (exception.errorCode == 'AWS.SimpleQueueService.NonExistentQueue') {
                 removeQueue(queueUrl)
             }
-            log.warn(exception)
+            log.warn 'An amazon service exception was catched while getting queue attributes', exception
         } catch (AmazonClientException exception) {
-            log.warn(exception)
+            log.warn 'An amazon client exception was catched while getting queue attributes', exception
         }
         attributes
     }
